@@ -47,7 +47,7 @@ def scrapeHeadlines():
         anchor = soup.find_all('a', attrs={'class':'subtle-link fin-size-small thumb yf-1e4diqp'})
 
         for atrb in anchor:
-            titles.append(atrb['title'])
+            titles.append(atrb['title'].lower())
             links.append(atrb['href'])
 
     return titles, links
@@ -55,18 +55,30 @@ def scrapeHeadlines():
 headlines, hrefs = scrapeHeadlines()
 
 data = []
-
+individual_stocks = []
 i = 0
 
 while i < len(headlines):
     # print('\n\n', headlines[i], '\n\n', hrefs[i])
-    AIResponse = request_API([{"role": "system", "content": "You are stock bot designed to give extremely short responses"}, {"role": "user", "content": f"return what MAJOR stock is the main focus of the following headline, keep in mind the focus could be at end of the sentence rather than beginning:{headlines[i]} ONLY RETURN THE COMPANY NAME, NOTHING ELSE. Return 'NONE' if headline doesnt meantion a specific stock"}], False)
-    if 'NONE' in AIResponse:
+    AIResponse = request_API([{"role": "system", "content": "You are stock bot designed to extract information from a headline"}, {"role": "user", "content": f"return what MAJOR stock is the main focus of the following headline, keep in mind the focus could be at end of the sentence rather than beginning:{headlines[i]} ONLY RETURN THE COMPANY NAME AS IT IS IN THE HEADLINE, NOTHING ELSE. Return 'NONE' if headline doesnt mention a specific stock"}], False)
+    if 'none' in AIResponse.lower():
         headlines.pop(i)
         continue
     
+    if AIResponse.lower() in headlines[i].lower():
+
+        formatted_response = headlines[i].split(AIResponse.lower())
+
+    else:
+        print('OpenAI Stock Not Found In Sentence')
+        headlines.pop(i)
+        continue
+    
+    formatted_response.insert(1, AIResponse.lower())
+
     i += 1
-    data.append(("", AIResponse, headlines[i]))
+    data.append(formatted_response)
+    individual_stocks.append(AIResponse)
 
 
 
@@ -74,11 +86,12 @@ while i < len(headlines):
 sentiments = tsc.infer(targets=data)
 
 for i, result in enumerate(sentiments):
-    if (result[0]['class_label']=='neutral'):
+    # check if the neutral probability is less than 7.5%, if so then print the second most probable
+    if (result[0]['class_label']=='neutral') and result[1]['class_prob'] > 0.075:
         print("Headline:", headlines[i])
-        print("Sentiment: ", i, result[1]['class_label'])
+        print("Sentiment: ", individual_stocks[i], result[1]['class_label'])
         print("Probability: ", result[1]['class_prob'])
     else:
         print("Headline:", headlines[i])
-        print("Sentiment: ", i, result[0]['class_label'])
+        print("Sentiment: ", individual_stocks[i], result[0]['class_label'])
         print("Probability: ", result[0]['class_prob'])
