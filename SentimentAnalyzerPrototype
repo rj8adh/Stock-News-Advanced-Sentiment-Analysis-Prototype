@@ -1,0 +1,15 @@
+from NewsSentiment import TargetSentimentClassifier
+tsc = TargetSentimentClassifier()
+
+data = [
+    ("I like ", "Peter", " but I don't like Robert."),
+    ("", "Mark Meadows", "'s coverup of Trump’s coup attempt is falling apart."),
+]
+
+sentiments = tsc.infer(targets=data)
+
+for i, result in enumerate(sentiments):
+    if (result[0]['class_label']=='neutral'):
+        print("Sentiment: ", i, result[1]['class_label'])
+    else:
+        print("Sentiment: ", i, result[0]['class_label'])
